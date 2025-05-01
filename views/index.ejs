@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Comment Widget Generator</title>
+</head>
+<body>
+  <h1>Create Your Comment Section</h1>
+  <form action="/generate" method="post">
+    <button type="submit">Generate Comment Widget</button>
+  </form>
+
+  <% if (embedCode) { %>
+    <h2>Your Embed Code:</h2>
+    <textarea rows="4" cols="100"><%= embedCode %></textarea>
+    <h3>Preview:</h3>
+    <%- embedCode %>
+  <% } %>
+</body>
+</html>

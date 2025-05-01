@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <% if (theme !== 'none') { %>
+    <link rel="stylesheet" href="/widget.css">
+  <% } %>
+</head>
+<body>
+  <form method="POST">
+    <input type="text" name="name" placeholder="Anonymous)">
+    <textarea name="comment" placeholder="Your comment" required></textarea>
+    <button type="submit">Post Comment</button>
+  </form>
+  <hr>
+  <% for (const { name, content } of comments) { %>
+    <div class="comment">
+      <strong><%= name %></strong><br>
+      <%= content %>
+    </div>
+  <% } %>
+</body>
+</html>
