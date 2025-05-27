@@ -6,8 +6,11 @@
 <body>
   <h1>Admin Panel for Section <%= sectionId %></h1>
 
+  <form method="POST" action="/admin/<%= sectionId %>/logout">
+    <button type="submit">Logout</button>
+  </form>
+
   <form method="POST" action="/admin/<%= sectionId %>/moderation">
-    <input type="hidden" name="password" value="<%= password %>">
     <label>
       <input type="checkbox" name="enable" value="1" <%= moderationEnabled ? 'checked' : '' %> onchange="this.form.submit()"> Enable Moderation
     </label>
@@ -20,13 +23,11 @@
         <strong><%= comment.name %></strong>: <%= comment.content %>
         <% if (comment.pending) { %>
           <form method="POST" action="/admin/<%= sectionId %>/approve" style="display:inline;">
-            <input type="hidden" name="password" value="<%= password %>">
             <input type="hidden" name="commentId" value="<%= comment.id %>">
             <button>Approve</button>
           </form>
         <% } %>
         <form method="POST" action="/admin/<%= sectionId %>/delete" style="display:inline;">
-          <input type="hidden" name="password" value="<%= password %>">
           <input type="hidden" name="commentId" value="<%= comment.id %>">
           <button>Delete</button>
         </form>

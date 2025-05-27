@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Admin Login</title>
+</head>
+<body>
+  <h1>Admin Login for Section <%= sectionId %></h1>
+
+  <% if (error) { %>
+    <p style="color: red;"><%= error %></p>
+  <% } %>
+
+  <form method="POST" action="/admin/<%= sectionId %>/login">
+    <label>
+      Password:
+      <input type="password" name="password" required />
+    </label>
+    <button type="submit">Login</button>
+  </form>
+</body>
+</html>
