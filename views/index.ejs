@@ -11,9 +11,20 @@
 
   <% if (embedCode) { %>
     <h2>Your Embed Code:</h2>
-    <textarea rows="4" cols="100"><%= embedCode %></textarea>
+    <textarea rows="4" cols="100" readonly><%= embedCode %></textarea>
+
     <h3>Preview:</h3>
-    <%- embedCode %>
+    <div>
+      <%- embedCode %>
+    </div>
+
+    <h3>Admin Details</h3>
+    <p><strong>Password:</strong> <code><%= adminPassword %></code></p>
+    <p><strong>Admin Panel:</strong> 
+      <a href="/admin/<%= embedCode.match(/widget\/(.+?)"/)[1] %>?password=<%= adminPassword %>" target="_blank">
+        Go to Admin Panel
+      </a>
+    </p>
   <% } %>
 </body>
 </html>

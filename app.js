@@ -5,6 +5,14 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { promisify } from 'util';
 import morgan from 'morgan';
+import rateLimit from 'express-rate-limit';
+import crypto from 'crypto';
+
+const cooldown = rateLimit({
+  windowMs: 10 * 1000,
+  max: 2,
+  message: 'Too many requests, please wait a few seconds.'
+});
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -15,14 +23,17 @@ const dbRun = promisify(db.run.bind(db));
 const dbAll = promisify(db.all.bind(db));
 
 await dbRun(`CREATE TABLE IF NOT EXISTS comment_sections (
-  section_id TEXT PRIMARY KEY
+  section_id TEXT PRIMARY KEY,
+  admin_password TEXT,
+  moderation_enabled INTEGER DEFAULT 0
 )`);
 
 await dbRun(`CREATE TABLE IF NOT EXISTS comments (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   section_id TEXT,
   name TEXT,
-  content TEXT
+  content TEXT,
+  pending INTEGER DEFAULT 0
 )`);
 
 app.use(morgan('dev'));
@@ -31,26 +42,23 @@ app.set('views', path.join(__dirname, 'views'));
 app.use(express.urlencoded({ extended: true, limit: '10kb' }));
 app.use(express.static(path.join(__dirname, 'public')));
 
-app.use((req, res, next) => {
-  console.log(`\n[INFO] ${req.method} ${req.url} - Query: ${JSON.stringify(req.query)} - Body: ${JSON.stringify(req.body)}`);
-  next();
-});
-
 app.get('/', (req, res) => {
-  console.log(`[INFO] Accessed homepage to generate embed code`);
-  res.render('index', { embedCode: null });
+  res.render('index', { embedCode: null, adminPassword: null });
 });
 
-app.post('/generate', async (req, res) => {
+app.post('/generate', cooldown, async (req, res) => {
   const sectionId = uuidv4();
-  console.log(`[INFO] Generating new comment section with ID: ${sectionId}`);
+  const adminPassword = crypto.randomBytes(4).toString('hex');
+
   try {
-    await dbRun('INSERT INTO comment_sections (section_id) VALUES (?)', sectionId);
+    await dbRun(
+      'INSERT INTO comment_sections (section_id, admin_password) VALUES (?, ?)',
+      sectionId,
+      adminPassword
+    );
     const embedCode = `<iframe src="http://localhost:${port}/widget/${sectionId}" width="100%" height="400" style="border:none;"></iframe>`;
-    console.log(`[INFO] Embed code generated for sectionId: ${sectionId}`);
-    res.render('index', { embedCode });
+    res.render('index', { embedCode, adminPassword });
   } catch (error) {
-    console.error(`[ERROR] Failed to insert comment section: ${error.message}`);
     res.status(500).send('Internal Server Error');
   }
 });
@@ -58,62 +66,113 @@ app.post('/generate', async (req, res) => {
 app.get('/widget/:sectionId', async (req, res) => {
   const { sectionId } = req.params;
   const theme = req.query.theme || 'default';
-  console.log(`[INFO] GET request for widget section ${sectionId} with theme: ${theme}`);
 
   try {
-    const sectionExists = await dbAll('SELECT 1 FROM comment_sections WHERE section_id = ?', sectionId);
-    if (sectionExists.length === 0) {
-      console.warn(`[WARN] Tried to access nonexistent sectionId: ${sectionId}`);
-      return res.status(404).send('Comment section not found');
-    }
+    const sectionExists = await dbAll('SELECT * FROM comment_sections WHERE section_id = ?', sectionId);
+    if (sectionExists.length === 0) return res.status(404).send('Comment section not found');
 
+    // Only approved comments
     const comments = await dbAll(
-      'SELECT name, content FROM comments WHERE section_id = ? ORDER BY id DESC',
+      'SELECT name, content FROM comments WHERE section_id = ? AND pending = 0 ORDER BY id DESC',
       sectionId
     );
 
-    console.log(`[INFO] Loaded ${comments.length} comments for section ${sectionId}`);
-    res.render('widget', { sectionId, comments, theme });
+    // Check for pending comments (waiting approval)
+    const pendingCountArr = await dbAll(
+      'SELECT COUNT(*) as count FROM comments WHERE section_id = ? AND pending = 1',
+      sectionId
+    );
+    const pendingCount = pendingCountArr[0]?.count || 0;
+
+    res.render('widget', { sectionId, comments, theme, pendingCount });
   } catch (err) {
-    console.error(`[ERROR] Failed to load section: ${err.message}`);
     res.status(500).send('Internal Server Error');
   }
 });
 
-app.post('/widget/:sectionId', async (req, res) => {
+
+app.post('/widget/:sectionId', cooldown, async (req, res) => {
   const { sectionId } = req.params;
   const { name = 'Anonymous', comment } = req.body;
 
   try {
-    const sectionExists = await dbAll('SELECT 1 FROM comment_sections WHERE section_id = ?', sectionId);
-    if (sectionExists.length === 0) {
-      console.warn(`[WARN] POST to nonexistent sectionId: ${sectionId}`);
-      return res.status(404).send('Comment section not found');
-    }
+    const section = await dbAll('SELECT moderation_enabled FROM comment_sections WHERE section_id = ?', sectionId);
+    if (section.length === 0) return res.status(404).send('Comment section not found');
 
-    if (!comment || comment.trim().length === 0) {
-      console.warn(`[WARN] Empty comment rejected for section ${sectionId}`);
-      return res.redirect(`/widget/${sectionId}`);
-    }
+    if (!comment || comment.trim().length === 0) return res.redirect(`/widget/${sectionId}`);
+    if (comment.trim().length > 150) return res.status(413).send('Comment too long');
 
-    if (comment.trim().length > 150) {
-      console.warn(`[WARN] Comment too long (${comment.length} chars) from section ${sectionId}`);
-      return res.status(413).send('Comment too long');
-    }
+    const isPending = section[0].moderation_enabled ? 1 : 0;
 
     await dbRun(
-      'INSERT INTO comments (section_id, name, content) VALUES (?, ?, ?)',
+      'INSERT INTO comments (section_id, name, content, pending) VALUES (?, ?, ?, ?)',
       sectionId,
       name.trim().slice(0, 30) || 'Anonymous',
-      comment.trim()
+      comment.trim(),
+      isPending
     );
 
-    console.log(`[INFO] Comment posted to section ${sectionId} by ${name}`);
     res.redirect(`/widget/${sectionId}`);
   } catch (err) {
-    console.error(`[ERROR] Failed to process comment: ${err.message}`);
     res.status(500).send('Internal Server Error');
   }
+});
+
+app.get('/admin/:sectionId', async (req, res) => {
+  const { sectionId } = req.params;
+  const { password } = req.query;
+
+  try {
+    const section = await dbAll('SELECT * FROM comment_sections WHERE section_id = ?', sectionId);
+    if (section.length === 0 || section[0].admin_password !== password) return res.status(403).send('Forbidden');
+
+    const comments = await dbAll(
+      'SELECT id, name, content, pending FROM comments WHERE section_id = ? ORDER BY id DESC',
+      sectionId
+    );
+
+    res.render('admin', {
+      sectionId,
+      comments,
+      moderationEnabled: section[0].moderation_enabled,
+      password
+    });
+  } catch (err) {
+    res.status(500).send('Internal Server Error');
+  }
+});
+
+app.post('/admin/:sectionId/moderation', async (req, res) => {
+  const { sectionId } = req.params;
+  const { password, enable } = req.body;
+
+  const section = await dbAll('SELECT * FROM comment_sections WHERE section_id = ?', sectionId);
+  if (section.length === 0 || section[0].admin_password !== password) return res.status(403).send('Forbidden');
+
+  await dbRun('UPDATE comment_sections SET moderation_enabled = ? WHERE section_id = ?', enable ? 1 : 0, sectionId);
+  res.redirect(`/admin/${sectionId}?password=${password}`);
+});
+
+app.post('/admin/:sectionId/delete', async (req, res) => {
+  const { sectionId } = req.params;
+  const { password, commentId } = req.body;
+
+  const section = await dbAll('SELECT * FROM comment_sections WHERE section_id = ?', sectionId);
+  if (section.length === 0 || section[0].admin_password !== password) return res.status(403).send('Forbidden');
+
+  await dbRun('DELETE FROM comments WHERE id = ? AND section_id = ?', commentId, sectionId);
+  res.redirect(`/admin/${sectionId}?password=${password}`);
+});
+
+app.post('/admin/:sectionId/approve', async (req, res) => {
+  const { sectionId } = req.params;
+  const { password, commentId } = req.body;
+
+  const section = await dbAll('SELECT * FROM comment_sections WHERE section_id = ?', sectionId);
+  if (section.length === 0 || section[0].admin_password !== password) return res.status(403).send('Forbidden');
+
+  await dbRun('UPDATE comments SET pending = 0 WHERE id = ? AND section_id = ?', commentId, sectionId);
+  res.redirect(`/admin/${sectionId}?password=${password}`);
 });
 
 app.listen(port, () => {

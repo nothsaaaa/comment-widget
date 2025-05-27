@@ -12,7 +12,19 @@
     <textarea name="comment" placeholder="Write a comment..." maxlength="150" required></textarea>
     <button type="submit">Post Comment</button>
   </form>
+
   <hr>
+
+  <% if (pendingCount > 0) { %>
+    <p style="color: orange; font-weight: bold;">
+      Some comments are pending approval and will appear once approved.
+    </p>
+  <% } %>
+
+  <% if (comments.length === 0) { %>
+    <p>No comments yet.</p>
+  <% } %>
+
   <% for (const { name, content } of comments) { %>
     <div class="comment">
       <strong><%= name %></strong><br>
@@ -20,4 +32,5 @@
     </div>
   <% } %>
 </body>
+
 </html>
