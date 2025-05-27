@@ -22,6 +22,32 @@ const db = new sqlite3.Database('./comments.db');
 const dbRun = promisify(db.run.bind(db));
 const dbAll = promisify(db.all.bind(db));
 
+const loginAttempts = new Map();
+
+function getLoginKey(ip, sectionId) {
+  return `${ip}-${sectionId}`;
+}
+
+function recordFailedAttempt(ip, sectionId) {
+  const key = getLoginKey(ip, sectionId);
+  const now = Date.now();
+  const attempts = loginAttempts.get(key) || [];
+
+  // Keep only attempts from the last hour
+  const recent = attempts.filter(t => now - t < 60 * 60 * 1000);
+  recent.push(now);
+  loginAttempts.set(key, recent);
+}
+
+function isBlocked(ip, sectionId) {
+  const key = getLoginKey(ip, sectionId);
+  const attempts = loginAttempts.get(key) || [];
+  const now = Date.now();
+  const recent = attempts.filter(t => now - t < 60 * 60 * 1000);
+  return recent.length >= 8;
+}
+
+
 await dbRun(`CREATE TABLE IF NOT EXISTS comment_sections (
   section_id TEXT PRIMARY KEY,
   admin_password TEXT,
@@ -77,7 +103,6 @@ app.get('/widget/:sectionId', async (req, res) => {
       sectionId
     );
 
-    // Check for pending comments (waiting approval)
     const pendingCountArr = await dbAll(
       'SELECT COUNT(*) as count FROM comments WHERE section_id = ? AND pending = 1',
       sectionId
@@ -121,10 +146,18 @@ app.post('/widget/:sectionId', cooldown, async (req, res) => {
 app.get('/admin/:sectionId', async (req, res) => {
   const { sectionId } = req.params;
   const { password } = req.query;
+  const ip = req.ip;
+
+  if (isBlocked(ip, sectionId)) {
+    return res.status(429).send('Too many incorrect login attempts. Try again later.');
+  }
 
   try {
     const section = await dbAll('SELECT * FROM comment_sections WHERE section_id = ?', sectionId);
-    if (section.length === 0 || section[0].admin_password !== password) return res.status(403).send('Forbidden');
+    if (section.length === 0 || section[0].admin_password !== password) {
+      recordFailedAttempt(ip, sectionId);  // Only track failed attempts
+      return res.status(403).send('Forbidden');
+    }
 
     const comments = await dbAll(
       'SELECT id, name, content, pending FROM comments WHERE section_id = ? ORDER BY id DESC',
@@ -141,6 +174,7 @@ app.get('/admin/:sectionId', async (req, res) => {
     res.status(500).send('Internal Server Error');
   }
 });
+
 
 app.post('/admin/:sectionId/moderation', async (req, res) => {
   const { sectionId } = req.params;
