@@ -1,4 +1,4 @@
-import express from 'express';
+import express from 'ultimate-express';
 import { dbAll, dbRun } from '../db/database.js';
 
 const router = express.Router();

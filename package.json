@@ -1,22 +1,24 @@
 {
   "name": "comment-widget",
   "version": "1.0.0",
+  "description": "a lightweight comment widget service for websites",
   "main": "app.js",
   "type": "module",
   "scripts": {
     "start": "node app.js"
   },
+  "author": "nothsaaaa",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/nothsaaaa/comment-widget.git"
+  },
   "dependencies": {
-    "art-template": "^4.13.4",
     "bcrypt": "^6.0.0",
     "cookie-parser": "^1.4.7",
     "ejs": "^3.1.10",
-    "express": "^4.21.2",
-    "express-art-template": "^1.0.1",
     "express-rate-limit": "^7.5.0",
     "morgan": "^1.10.0",
-    "node-fetch": "^3.3.2",
-    "sqlite": "^5.1.1",
     "sqlite3": "^5.1.7",
     "ultimate-express": "^2.0.5",
     "uuid": "^9.0.1"

@@ -1,4 +1,4 @@
-import express from 'express';
+import express from 'ultimate-express';
 import crypto from 'crypto';
 import bcrypt from 'bcrypt';
 import { dbRun, dbAll } from '../db/database.js';
