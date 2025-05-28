@@ -8,6 +8,8 @@ import { recordFailedAttempt, isBlocked } from '../utils/loginAttempts.js';
 const router = express.Router();
 
 const SESSION_DURATION = 90 * 24 * 60 * 60 * 1000; // 90 days in ms
+// the reason this is so long is because its not a bank
+// stupid Comment widget
 
 router.get('/:sectionId/login', (req, res) => {
   res.render('login', { sectionId: req.params.sectionId, error: null });
@@ -32,7 +34,7 @@ router.post('/:sectionId/login', async (req, res) => {
       return res.render('login', { sectionId, error: 'Invalid password' });
     }
 
-    // Clean expired sessions on login
+    // clean expired sessions on login
     await dbRun('DELETE FROM admin_sessions WHERE expires_at < ?', Date.now());
 
     const sessionToken = crypto.randomBytes(32).toString('hex');
@@ -50,6 +52,7 @@ router.post('/:sectionId/login', async (req, res) => {
       signed: true,
       maxAge: SESSION_DURATION,
       // secure: true, // Enable in production HTTPS
+      // i may be misunderstanding `httpOnly` and `secure: True`
     });
 
     res.redirect(`/admin/${sectionId}`);

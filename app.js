@@ -1,4 +1,4 @@
-import express from 'express';
+import express from 'ultimate-express';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import morgan from 'morgan';
@@ -22,7 +22,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.use(cookieParser('SuperSecret')); // CHANGE CHANGE CHANGE CHANGE CHANGE CHANGE CHANGE CHANGE CHANGE CHANGE
 
 app.use('/', indexRouter);
-app.use('/widget', cooldown, widgetRouter); // rate limited routes here
+app.use('/widget', cooldown, widgetRouter); // all rate limited routes here
 app.use('/admin', adminRouter);
 
 app.listen(port, () => {

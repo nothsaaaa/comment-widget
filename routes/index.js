@@ -13,8 +13,8 @@ router.get('/', (req, res) => {
 
 router.post('/generate', cooldown, async (req, res) => {
   const sectionId = uuidv4();
-  const rawPassword = crypto.randomBytes(4).toString('hex');
-  const saltRounds = 12;
+  const rawPassword = crypto.randomBytes(8).toString('hex');
+  const saltRounds = 12; //change probably
 
   try {
     const hashedPassword = await bcrypt.hash(rawPassword, saltRounds);
