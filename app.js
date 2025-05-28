@@ -1,4 +1,4 @@
-import express from 'ultimate-express';
+import express from 'express';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import morgan from 'morgan';
