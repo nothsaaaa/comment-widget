@@ -11,9 +11,9 @@ running
 ![image](https://github.com/user-attachments/assets/334e3fc4-81a8-4b37-8b7a-f815f158a25b)
 
 ### notes
-in ./routes/admin.js you will notice i enable `httpOnly` and didnt set `secure` to any value
-i have no clue what these do and im too scared to play with them
-those should be the only values you need to change for production, please open a pull request if you know correctly
-
+in ./routes/admin.js you will notice i enable `httpOnly` and didnt set `secure` to any value<br>
+i have no clue what these do and im too scared to play with them<br>
+those should be the only values you need to change for production, please open a pull request if you know correctly<br>
+<br>
 this app uses session based authentication also
 
