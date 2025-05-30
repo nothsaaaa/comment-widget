@@ -1,38 +1,202 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Admin Panel</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      font-size: 14px;
+      margin: 10px;
+      background-color: #1e1e2f;
+      color: #eee;
+    }
+
+    .container {
+      max-width: 800px;
+      margin: 40px auto;
+      padding: 20px;
+      background-color: #292940;
+      border-radius: 8px;
+      border: 1px solid #444;
+      box-sizing: border-box;
+    }
+
+    h1 {
+      margin-top: 0;
+      margin-bottom: 20px;
+      color: #eee;
+      font-weight: normal;
+    }
+
+    form {
+      margin: 15px 0;
+    }
+
+    label {
+      display: flex;
+      gap: 8px;
+      color: #ccc;
+      font-weight: 600;
+      font-size: 14px;
+      cursor: pointer;
+      align-items: center;
+    }
+
+    input[type="checkbox"] {
+      width: 18px;
+      height: 18px;
+      accent-color: #5e2ca5;
+      cursor: pointer;
+    }
+
+    button {
+      margin-top: 10px;
+      padding: 8px 12px;
+      background-color: #5e2ca5;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 14px;
+      transition: background-color 0.3s ease;
+    }
+
+    button:hover {
+      background-color: #4b2386;
+    }
+
+    ul.comments-list {
+      list-style: none;
+      padding: 0;
+      text-align: left;
+      overflow-y: auto;
+      border: 1px solid #444;
+      border-radius: 6px;
+      background-color: #2c2c3e;
+    }
+
+    ul.comments-list li {
+      padding: 10px;
+      border-bottom: 1px solid #444;
+      color: #eee;
+    }
+
+    ul.comments-list li:last-child {
+      border-bottom: none;
+    }
+
+    .comment-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 16px;
+    }
+
+    .comment-body {
+      flex: 1;
+    }
+
+    .comment-author {
+      font-weight: 600;
+      color: #cdaeff;
+      margin-bottom: 4px;
+      display: block;
+    }
+
+    .comment-content {
+      margin: 0;
+      font-size: 13px;
+      color: #ddd;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+    }
+
+    .comment-actions {
+      display: flex;
+      flex-direction: row;
+      gap: 8px;
+      align-items: flex-start;
+    }
+
+    .comment-actions form {
+      display: inline;
+    }
+
+    .comment-actions button {
+      padding: 4px 10px;
+      font-size: 13px;
+      width: auto;
+      height: 30px;
+      background-color: #5e2ca5;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+      white-space: nowrap;
+    }
+
+    .comment-actions button:hover {
+      background-color: #4b2386;
+    }
+
+    .comment-header {
+      display: flex;
+      justify-content: space-between;
+    }
+  </style>
+
 </head>
 <body>
-  <h1>Admin Panel for Section <%= sectionId %></h1>
+  <div class="container">
+    <h1>Admin Panel</h1>
+    <p style="margin-top: -15px;"><strong>Section <%= sectionId %></strong></p>
 
-  <form method="POST" action="/admin/<%= sectionId %>/logout">
-    <button type="submit">Logout</button>
-  </form>
+    <form method="POST" action="/admin/<%= sectionId %>/logout">
+      <button type="submit">Logout</button>
+    </form>
 
-  <form method="POST" action="/admin/<%= sectionId %>/moderation">
-    <label>
-      <input type="checkbox" name="enable" value="1" <%= moderationEnabled ? 'checked' : '' %> onchange="this.form.submit()"> Enable Moderation
-    </label>
-  </form>
+    <form method="POST" action="/admin/<%= sectionId %>/moderation">
+      <label>
+        <input
+          type="checkbox"
+          name="enable"
+          value="1"
+          <%= moderationEnabled ? 'checked' : '' %>
+          onchange="this.form.submit()"
+        />
+        Enable Moderation
+      </label>
+    </form>
 
-  <h2>Comments</h2>
-  <ul>
-    <% comments.forEach(comment => { %>
+    <h2>Comments</h2>
+    <ul class="comments-list">
+      <% comments.forEach(comment => { %>
       <li>
-        <strong><%= comment.name %></strong>: <%= comment.content %>
-        <% if (comment.pending) { %>
-          <form method="POST" action="/admin/<%= sectionId %>/approve" style="display:inline;">
-            <input type="hidden" name="commentId" value="<%= comment.id %>">
-            <button>Approve</button>
-          </form>
-        <% } %>
-        <form method="POST" action="/admin/<%= sectionId %>/delete" style="display:inline;">
-          <input type="hidden" name="commentId" value="<%= comment.id %>">
-          <button>Delete</button>
-        </form>
+        <div class="comment-row">
+          <div class="comment-body">
+            <span class="comment-author"><%= comment.name %></span>
+            <p class="comment-content"><%= comment.content %></p>
+          </div>
+          <div class="comment-actions">
+            <% if (comment.pending) { %>
+              <form method="POST" action="/admin/<%= sectionId %>/approve">
+                <input type="hidden" name="commentId" value="<%= comment.id %>">
+                <button type="submit">Approve</button>
+              </form>
+            <% } %>
+            <form method="POST" action="/admin/<%= sectionId %>/delete">
+              <input type="hidden" name="commentId" value="<%= comment.id %>">
+              <button type="submit">Delete</button>
+            </form>
+          </div>
+        </div>
       </li>
-    <% }); %>
-  </ul>
+
+      <% }); %>
+    </ul>
+  </div>
 </body>
 </html>
